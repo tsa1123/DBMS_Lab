@@ -1,8 +1,6 @@
 #include "BlockAccess.h"
 
 #include <cstring>
-<<<<<<< HEAD
-=======
 
 RecId BlockAccess::linearSearch(int relId, char attrName[ATTR_SIZE], union Attribute attrVal, int op){
 	RecId prevRecId;
@@ -62,4 +60,3 @@ RecId BlockAccess::linearSearch(int relId, char attrName[ATTR_SIZE], union Attri
 
 	return RecId{-1, -1};
 }
->>>>>>> 77970a1... Stage4
