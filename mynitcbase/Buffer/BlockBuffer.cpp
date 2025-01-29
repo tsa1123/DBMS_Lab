@@ -41,9 +41,39 @@ int RecBuffer::getRecord(union Attribute *rec, int slotNum){
 	return SUCCESS;
 }
 
+int RecBuffer::setRecord(union Attribute *rec, int slotNum){
+	unsigned char* bufferPtr;
+	int ret = loadBlockAndGetBufferPtr(&bufferPtr);
+	if(ret!=SUCCESS)return ret;
+
+	struct HeadInfo head;
+	getHeader(&head);
+
+	int attrCount = head.numAttrs;
+	int slotCount = head.numSlots;
+
+	if(slotNum >= slotCount)return E_OUTOFBOUND;
+
+	int recordSize = attrCount * ATTR_SIZE;
+	unsigned char *slotPointer = bufferPtr + HEADER_SIZE + slotCount + (recordSize * slotNum);
+	memcpy(slotPointer, rec, recordSize);
+
+	StaticBuffer::setDirtyBit(this->blockNum);
+
+	return SUCCESS;
+}
+
 int BlockBuffer::loadBlockAndGetBufferPtr(unsigned char **buffPtr){
 	int bufferNum = StaticBuffer::getBufferNum(this->blockNum);
-	if(bufferNum==E_BLOCKNOTINBUFFER){
+	if(bufferNum!=E_BLOCKNOTINBUFFER){
+		StaticBuffer::metainfo[bufferNum].timeStamp=0;
+		for(int bufferIndex=0; bufferIndex<BUFFER_CAPACITY; bufferIndex++){
+			if(bufferIndex!=bufferNum && !StaticBuffer::metainfo[bufferIndex].free){
+				(StaticBuffer::metainfo[bufferIndex].timeStamp)++;
+			}
+		}
+	}
+	else{
 		bufferNum = StaticBuffer::getFreeBuffer(this->blockNum);
 		if(bufferNum == E_OUTOFBOUND)return E_OUTOFBOUND;
 
