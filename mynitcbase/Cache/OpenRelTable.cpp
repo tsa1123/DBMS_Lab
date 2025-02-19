@@ -101,7 +101,7 @@ OpenRelTable::~OpenRelTable(){
 
 int OpenRelTable::getRelId(char relName[ATTR_SIZE]){
 	for(int i=0; i<MAX_OPEN; i++){
-		if(strcmp(tableMetaInfo[i].relName, relName)==0)return i;
+		if(!tableMetaInfo[i].free && strcmp(tableMetaInfo[i].relName, relName)==0)return i;
 	}
 	return E_RELNOTOPEN;
 }
@@ -171,6 +171,15 @@ int OpenRelTable::closeRel(int relId){
 	}
 	if(tableMetaInfo[relId].free){
 		return E_RELNOTOPEN;
+	}
+	
+	if(RelCacheTable::relCache[relId]->dirty){
+		Attribute relCatRecord[RELCAT_NO_ATTRS];
+		RelCacheTable::relCatEntryToRecord(&(RelCacheTable::relCache[relId]->relCatEntry), relCatRecord);
+		
+		RecId recId = RelCacheTable::relCache[relId]->recId;
+		RecBuffer relCatBlock(recId.block);
+		relCatBlock.setRecord(relCatRecord, recId.slot);
 	}
 
 	free(RelCacheTable::relCache[relId]);
