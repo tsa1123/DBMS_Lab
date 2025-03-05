@@ -139,6 +139,19 @@ int RecBuffer::setRecord(union Attribute *rec, int slotNum){
 	return SUCCESS;
 }
 
+void BlockBuffer::releaseBlock(){
+	if(this->blockNum==-1)return;
+	else{
+		int bufferNum = StaticBuffer::getBufferNum(this->blockNum);
+		if(bufferNum<0 || bufferNum>=BUFFER_CAPACITY) return;
+		StaticBuffer::tableMetaInfo[bufferNum].free = true;
+
+		StaticBuffer::blockAllocMap[this->blockNum] = UNUSED_BLK;
+		this->blockNum = -1;
+		
+	}
+}
+
 int BlockBuffer::loadBlockAndGetBufferPtr(unsigned char **buffPtr){
 	int bufferNum = StaticBuffer::getBufferNum(this->blockNum);
 	if(bufferNum!=E_BLOCKNOTINBUFFER){

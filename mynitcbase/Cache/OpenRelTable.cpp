@@ -80,6 +80,23 @@ OpenRelTable::~OpenRelTable(){
 		}
 	}
 
+	if(RelCacheTable::relCache[ATTRCAT_RELID].dirty){
+		Attribute relCatRecord;
+		RelCacheTable::relCatEntryToRecord(&(RelCacheTable::relCache[ATTRCAT_RELID].relCatEntry), relCatRecord);
+
+		RecId recId = RelCacheTable::relCache[ATTRCAT_RELID].recId;
+		RecBuffer relCatBlock(recId.block);
+		relCatBlock.setRecord(relCatRecord, recId.slot);
+	}
+	
+	if(RelCacheTable::relCache[RELCAT_RELID].dirty){
+                Attribute relCatRecord;
+                RelCacheTable::relCatEntryToRecord(&(RelCacheTable::relCache[RELCAT_RELID].relCatEntry), relCatRecord);
+
+                RecId recId = RelCacheTable::relCache[RELCAT_RELID].recId;
+                RecBuffer relCatBlock(recId.block);
+                relCatBlock.setRecord(relCatRecord, recId.slot);
+        }
 
 	free(RelCacheTable::relCache[RELCAT_RELID]);
 	free(RelCacheTable::relCache[ATTRCAT_RELID]);

@@ -151,6 +151,20 @@ RecId BlockAccess::linearSearch(int relId, char attrName[ATTR_SIZE], union Attri
 	return RecId{-1, -1};
 }
 
+int BlockAccess::search(int relId, Attribute *record, char attrName[ATTR_SIZE], Attribute attrVal, int op){
+	RecId recId;
+
+	recId = linearSearch(relId, attrName, attrVal, op);
+	if(recId.block == -1 && recId.slot == -1){
+		return E_NOTFOUND;
+	}
+
+	RecBuffer buffer(recId.block);
+	buffer.getRecord(record, recId.slot);
+
+	return SUCCESS;
+}
+
 int BlockAccess::renameRelation(char oldName[ATTR_SIZE], char newName[ATTR_SIZE]){
 	RelCacheTable::resetSearchIndex(RELCAT_RELID);
 
