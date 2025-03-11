@@ -250,3 +250,108 @@ int BlockAccess::renameAttribute(char relName[ATTR_SIZE], char oldName[ATTR_SIZE
 
 	return SUCCESS;
 }
+
+int BlockAccess::deleteRelation(char relName[ATTR_SIZE]){
+	if(strcmp(relName, RELCAT_RELNAME)==0 || strcmp(relName, ATTRCAT_RELNAME)==0){
+		return E_NOTPERMITTED;
+	}
+	RelCacheTable::resetSearchIndex(RELCAT_RELID);
+
+	Attribute relNameAttr;
+	strcpy(relNameAttr.sVal, relName);
+
+	RecId recId = BlockAccess::linearSearch(RELCAT_RELID, (char *)RELCAT_ATTR_RELNAME, relNameAttr, EQ);
+	if(recId.block==-1 && recId.slot==-1){
+		return E_RELNOTEXIST;
+	}
+
+	RecBuffer relCatBuffer(RELCAT_BLOCK);
+	Attribute relCatEntryRecord[RELCAT_NO_ATTRS];
+	relCatBuffer.getRecord(relCatEntryRecord, recId.slot);
+
+	int block = relCatEntryRecord[RELCAT_FIRST_BLOCK_INDEX].nVal;
+	int nAttrs = relCatEntryRecord[RELCAT_NO_ATTRIBUTES_INDEX].nVal;
+	
+	struct HeadInfo head;
+	while(block!=-1){
+		RecBuffer recBuffer(block);
+		recBuffer.getHeader(&head);
+		block = head.rblock;
+		recBuffer.releaseBlock();
+	}
+
+	RelCacheTable::resetSearchIndex(ATTRCAT_RELID);
+
+	int numberOfAttributesDeleted = 0;
+
+	while(true){
+		RecId attrCatRecId;
+		attrCatRecId = linearSearch(ATTRCAT_RELID, (char*)ATTRCAT_ATTR_RELNAME, relNameAttr, EQ);
+		
+		if(attrCatRecId.block==-1 && attrCatRecId.slot==-1){
+			break;
+		}
+
+		numberOfAttributesDeleted++;
+
+		RecBuffer attrCatBuffer(attrCatRecId.block);
+		
+		Attribute attrCatEntryRecord[ATTRCAT_NO_ATTRS];
+		attrCatBuffer.getRecord(attrCatEntryRecord, attrCatRecId.slot);
+		
+		int rootBlock = attrCatEntryRecord[ATTRCAT_ROOT_BLOCK_INDEX].nVal;
+		
+		unsigned char slotMap[DISK_BLOCKS];
+		attrCatBuffer.getSlotMap(slotMap);
+		slotMap[attrCatRecId.slot] = SLOT_UNOCCUPIED;
+		attrCatBuffer.setSlotMap(slotMap);
+
+		attrCatBuffer.getHeader(&head);
+		head.numEntries--;
+		attrCatBuffer.setHeader(&head);
+
+		if(head.numEntries == 0){
+			RecBuffer prevBlockBuffer(head.lblock);
+			struct HeadInfo prevHeader;
+			prevBlockBuffer.getHeader(&prevHeader);
+			prevHeader.rblock = head.rblock;
+			prevBlockBuffer.setHeader(&prevHeader);
+
+			if(head.rblock!=-1){
+				RecBuffer nextBlockBuffer(head.rblock);
+				struct HeadInfo nextHeader;
+				nextBlockBuffer.getHeader(&nextHeader);
+				nextHeader.lblock = head.lblock;
+				nextBlockBuffer.setHeader(&nextHeader);
+			}
+			else{
+				RelCatEntry relCatEntry;
+				RelCacheTable::getRelCatEntry(ATTRCAT_RELID, &relCatEntry);
+				relCatEntry.lastBlk = head.lblock;
+				RelCacheTable::setRelCatEntry(ATTRCAT_RELID, &relCatEntry);
+			}
+			attrCatBuffer.releaseBlock();
+		}
+
+	}
+	
+	relCatBuffer.getHeader(&head);
+	head.numEntries--;
+	relCatBuffer.setHeader(&head);
+
+	unsigned char slotMap[DISK_BLOCKS];
+	relCatBuffer.getSlotMap(slotMap);
+	slotMap[recId.slot] = SLOT_UNOCCUPIED;
+	relCatBuffer.setSlotMap(slotMap);
+
+	RelCatEntry relCatEntry;
+	RelCacheTable::getRelCatEntry(RELCAT_RELID, &relCatEntry);
+	relCatEntry.numRecs--;
+	RelCacheTable::setRelCatEntry(RELCAT_RELID, &relCatEntry);
+
+	RelCacheTable::getRelCatEntry(ATTRCAT_RELID, &relCatEntry);
+	relCatEntry.numRecs -= numberOfAttributesDeleted;
+	RelCacheTable::setRelCatEntry(ATTRCAT_RELID, &relCatEntry);
+
+	return SUCCESS;
+}

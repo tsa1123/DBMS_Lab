@@ -80,20 +80,20 @@ OpenRelTable::~OpenRelTable(){
 		}
 	}
 
-	if(RelCacheTable::relCache[ATTRCAT_RELID].dirty){
-		Attribute relCatRecord;
-		RelCacheTable::relCatEntryToRecord(&(RelCacheTable::relCache[ATTRCAT_RELID].relCatEntry), relCatRecord);
+	if(RelCacheTable::relCache[ATTRCAT_RELID]->dirty){
+		Attribute relCatRecord[RELCAT_NO_ATTRS];
+		RelCacheTable::relCatEntryToRecord(&(RelCacheTable::relCache[ATTRCAT_RELID]->relCatEntry), relCatRecord);
 
-		RecId recId = RelCacheTable::relCache[ATTRCAT_RELID].recId;
+		RecId recId = RelCacheTable::relCache[ATTRCAT_RELID]->recId;
 		RecBuffer relCatBlock(recId.block);
 		relCatBlock.setRecord(relCatRecord, recId.slot);
 	}
 	
-	if(RelCacheTable::relCache[RELCAT_RELID].dirty){
-                Attribute relCatRecord;
-                RelCacheTable::relCatEntryToRecord(&(RelCacheTable::relCache[RELCAT_RELID].relCatEntry), relCatRecord);
+	if(RelCacheTable::relCache[RELCAT_RELID]->dirty){
+                Attribute relCatRecord[RELCAT_NO_ATTRS];
+                RelCacheTable::relCatEntryToRecord(&(RelCacheTable::relCache[RELCAT_RELID]->relCatEntry), relCatRecord);
 
-                RecId recId = RelCacheTable::relCache[RELCAT_RELID].recId;
+                RecId recId = RelCacheTable::relCache[RELCAT_RELID]->recId;
                 RecBuffer relCatBlock(recId.block);
                 relCatBlock.setRecord(relCatRecord, recId.slot);
         }

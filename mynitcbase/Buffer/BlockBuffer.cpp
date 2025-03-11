@@ -144,7 +144,7 @@ void BlockBuffer::releaseBlock(){
 	else{
 		int bufferNum = StaticBuffer::getBufferNum(this->blockNum);
 		if(bufferNum<0 || bufferNum>=BUFFER_CAPACITY) return;
-		StaticBuffer::tableMetaInfo[bufferNum].free = true;
+		StaticBuffer::metainfo[bufferNum].free = true;
 
 		StaticBuffer::blockAllocMap[this->blockNum] = UNUSED_BLK;
 		this->blockNum = -1;
