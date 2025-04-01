@@ -1,3 +1,5 @@
+extern int comparisons;
+
 #include "Algebra.h"
 #include <cstdio>
 #include <cstdlib>
@@ -91,6 +93,9 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
 
 	Attribute record[src_nAttrs];
         RelCacheTable::resetSearchIndex(srcRelId);
+	AttrCacheTable::resetSearchIndex(srcRelId, attr);
+
+	comparisons=0;
 
 	while(BlockAccess::search(srcRelId, record, attr, attrVal, op) == SUCCESS){
 		ret = BlockAccess::insert(targetRelId, record);
@@ -102,7 +107,7 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
 	}
 
 	Schema::closeRel(targetRel);
-
+	printf("%d comparisons made\n",comparisons);
 	return SUCCESS;
 }
 
@@ -139,7 +144,8 @@ int Algebra::project(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], int tar_
         Attribute record[src_nAttrs];
 	Attribute proj_record[tar_nAttrs];
         RelCacheTable::resetSearchIndex(srcRelId);
-
+	
+	comparisons=0;
         while(BlockAccess::project(srcRelId, record) == SUCCESS){
                 for(int attr_iter=0; attr_iter<tar_nAttrs; attr_iter++){
 			proj_record[attr_iter] = record[attr_offset[attr_iter]];
@@ -154,7 +160,7 @@ int Algebra::project(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], int tar_
         }
 
         Schema::closeRel(targetRel);
-
+	printf("%d comparisons made",comparisons);
 	return SUCCESS;
 }
 

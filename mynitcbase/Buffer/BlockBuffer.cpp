@@ -2,7 +2,7 @@
 
 #include <cstdlib>
 #include <cstring>
-
+int comparisons;
 BlockBuffer::BlockBuffer(char blockType){
 	int retVal;
        	switch(blockType){
@@ -23,6 +23,18 @@ BlockBuffer::BlockBuffer(int blockNum){
 RecBuffer::RecBuffer() : BlockBuffer::BlockBuffer('R'){}
 
 RecBuffer::RecBuffer(int blockNum) : BlockBuffer::BlockBuffer(blockNum){}
+
+IndBuffer::IndBuffer(char blockType) : BlockBuffer::BlockBuffer(blockType){}
+
+IndBuffer::IndBuffer(int blockNum) : BlockBuffer::BlockBuffer(blockNum){}
+
+IndInternal::IndInternal() : IndBuffer::IndBuffer('I'){}
+
+IndInternal::IndInternal(int blockNum) : IndBuffer::IndBuffer(blockNum){}
+
+IndLeaf::IndLeaf() : IndBuffer::IndBuffer('L'){}
+
+IndLeaf::IndLeaf(int blockNum) : IndBuffer::IndBuffer(blockNum){}
 
 int BlockBuffer::getBlockNum(){
 	return this->blockNum;
@@ -211,7 +223,7 @@ int RecBuffer::setSlotMap(unsigned char* slotMap){
 
 int compareAttrs(union Attribute attr1, union Attribute attr2, int attrType){
 	double diff;
-	
+	comparisons++;
 	if(attrType == STRING){
 		diff = strcmp(attr1.sVal, attr2.sVal);
 	}
@@ -220,4 +232,54 @@ int compareAttrs(union Attribute attr1, union Attribute attr2, int attrType){
 	if(diff<0)return -1;
 	else if(diff>0)return 1;
 	else return 0;
+}
+
+int IndInternal::getEntry(void *ptr, int indexNum){
+	if(indexNum<0 || indexNum>=MAX_KEYS_INTERNAL){
+		return E_OUTOFBOUND;
+	}
+
+	unsigned char *bufferPtr;
+
+	int ret = loadBlockAndGetBufferPtr(&bufferPtr);
+        if(ret != SUCCESS)return ret;
+	
+	struct InternalEntry *internalEntry = (struct InternalEntry*)ptr;
+
+	unsigned char *entryPtr = bufferPtr + HEADER_SIZE + (indexNum * 20);
+
+	memcpy(&(internalEntry->lChild), entryPtr, 4);
+	memcpy(&(internalEntry->attrVal), entryPtr + 4, sizeof(Attribute));
+	memcpy(&(internalEntry->rChild), entryPtr + 20, 4);
+
+	return SUCCESS;
+}
+
+int IndInternal::setEntry(void *ptr, int indexNum){
+	return 0;
+}
+
+int IndLeaf::getEntry(void *ptr, int indexNum){
+	if(indexNum<0 || indexNum>=MAX_KEYS_LEAF){
+		return E_OUTOFBOUND;
+	}
+
+	unsigned char *bufferPtr;
+
+        int ret = loadBlockAndGetBufferPtr(&bufferPtr);
+        if(ret != SUCCESS)return ret;
+
+	struct Index *index = (struct Index*)ptr;
+
+	unsigned char *entryPtr = bufferPtr + HEADER_SIZE + (indexNum * LEAF_ENTRY_SIZE);
+
+	memcpy(&(index->attrVal), entryPtr, ATTR_SIZE);
+	memcpy(&(index->block), entryPtr + 16, 4);
+	memcpy(&(index->slot), entryPtr + 20, 4);
+	
+	return SUCCESS;
+}
+
+int IndLeaf::setEntry(void *ptr, int indexNum){
+	return 0;
 }

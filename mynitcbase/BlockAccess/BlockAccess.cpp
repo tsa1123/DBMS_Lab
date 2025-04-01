@@ -153,8 +153,18 @@ RecId BlockAccess::linearSearch(int relId, char attrName[ATTR_SIZE], union Attri
 
 int BlockAccess::search(int relId, Attribute *record, char attrName[ATTR_SIZE], Attribute attrVal, int op){
 	RecId recId;
+	
+	AttrCatEntry attrCatEntry;
+	int ret = AttrCacheTable::getAttrCatEntry(relId, attrName, &attrCatEntry);
+	if(ret!=SUCCESS)return ret;
 
-	recId = linearSearch(relId, attrName, attrVal, op);
+	if(attrCatEntry.rootBlock == -1){
+		recId = linearSearch(relId, attrName, attrVal, op);
+	}
+	else{
+		recId = BPlusTree::bPlusSearch(relId, attrName, attrVal, op);
+	}
+
 	if(recId.block == -1 && recId.slot == -1){
 		return E_NOTFOUND;
 	}
