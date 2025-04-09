@@ -11,7 +11,13 @@ int AttrCacheTable::getAttrCatEntry(int relId, int attrOffset, AttrCatEntry* att
 
 	for(AttrCacheEntry* entry = attrCache[relId]; entry!=nullptr; entry=entry->next){
 		if(entry->attrCatEntry.offset == attrOffset){
-			*attrCatBuf = entry->attrCatEntry;
+			strcpy(attrCatBuf->relName, entry->attrCatEntry.relName);
+		        strcpy(attrCatBuf->attrName, entry->attrCatEntry.attrName);
+
+        		attrCatBuf->attrType = entry->attrCatEntry.attrType;
+        		attrCatBuf->primaryFlag = entry->attrCatEntry.primaryFlag;
+			attrCatBuf->rootBlock = entry->attrCatEntry.rootBlock;
+			attrCatBuf->offset = entry->attrCatEntry.offset;
 			return SUCCESS;
 		}
 	}
@@ -25,7 +31,59 @@ int AttrCacheTable::getAttrCatEntry(int relId, char attrName[ATTR_SIZE], AttrCat
 
         for(AttrCacheEntry* entry = attrCache[relId]; entry!=nullptr; entry=entry->next){
                 if(strcmp(entry->attrCatEntry.attrName, attrName)==0){
-                        *attrCatBuf = entry->attrCatEntry;
+                        strcpy(attrCatBuf->relName, entry->attrCatEntry.relName);
+		        strcpy(attrCatBuf->attrName, entry->attrCatEntry.attrName);
+
+		        attrCatBuf->attrType = entry->attrCatEntry.attrType;
+        		attrCatBuf->primaryFlag = entry->attrCatEntry.primaryFlag;
+		        attrCatBuf->rootBlock = entry->attrCatEntry.rootBlock;
+        		attrCatBuf->offset = entry->attrCatEntry.offset;
+			return SUCCESS;
+                }
+        }
+        return E_ATTRNOTEXIST;
+}
+
+int AttrCacheTable::setAttrCatEntry(int relId, int attrOffset, AttrCatEntry* attrCatBuf){
+        if(relId<0 || relId>=MAX_OPEN)return E_OUTOFBOUND;
+
+        if(attrCache[relId] == nullptr)return E_RELNOTOPEN;
+
+        for(AttrCacheEntry* entry = attrCache[relId]; entry!=nullptr; entry=entry->next){
+                if(entry->attrCatEntry.offset == attrOffset){
+			strcpy(entry->attrCatEntry.relName, attrCatBuf->relName);
+        		strcpy(entry->attrCatEntry.attrName, attrCatBuf->attrName);
+
+		        entry->attrCatEntry.attrType = attrCatBuf->attrType;
+	    		entry->attrCatEntry.primaryFlag = attrCatBuf->primaryFlag;
+			entry->attrCatEntry.rootBlock = attrCatBuf->rootBlock;
+			entry->attrCatEntry.offset = attrCatBuf->offset;
+
+			entry->dirty = true;
+
+                        return SUCCESS;
+                }
+        }
+        return E_ATTRNOTEXIST;
+}
+
+int AttrCacheTable::setAttrCatEntry(int relId, char attrName[ATTR_SIZE], AttrCatEntry* attrCatBuf){
+        if(relId<0 || relId>=MAX_OPEN)return E_OUTOFBOUND;
+
+        if(attrCache[relId] == nullptr)return E_RELNOTOPEN;
+
+        for(AttrCacheEntry* entry = attrCache[relId]; entry!=nullptr; entry=entry->next){
+                if(strcmp(entry->attrCatEntry.attrName, attrName)==0){
+			strcpy(entry->attrCatEntry.relName, attrCatBuf->relName);
+		        strcpy(entry->attrCatEntry.attrName, attrCatBuf->attrName);
+
+		        entry->attrCatEntry.attrType = attrCatBuf->attrType;
+		        entry->attrCatEntry.primaryFlag = attrCatBuf->primaryFlag;
+		        entry->attrCatEntry.rootBlock = attrCatBuf->rootBlock;
+		        entry->attrCatEntry.offset = attrCatBuf->offset;
+
+			entry->dirty = true;
+
                         return SUCCESS;
                 }
         }
@@ -105,4 +163,13 @@ void AttrCacheTable::recordToAttrCatEntry(union Attribute record[ATTRCAT_NO_ATTR
 	attrCatEntry->primaryFlag = (bool)record[ATTRCAT_PRIMARY_FLAG_INDEX].nVal;
 	attrCatEntry->rootBlock = (int)record[ATTRCAT_ROOT_BLOCK_INDEX].nVal;
 	attrCatEntry->offset = (int)record[ATTRCAT_OFFSET_INDEX].nVal;
+}
+
+void AttrCacheTable::attrCatEntryToRecord(AttrCatEntry* attrCatEntry, union Attribute record[ATTRCAT_NO_ATTRS]){
+        strcpy(record[ATTRCAT_REL_NAME_INDEX].sVal, attrCatEntry->relName);
+        strcpy(record[ATTRCAT_ATTR_NAME_INDEX].sVal, attrCatEntry->attrName);
+        record[ATTRCAT_ATTR_TYPE_INDEX].nVal = attrCatEntry->attrType;
+        record[ATTRCAT_PRIMARY_FLAG_INDEX].nVal = attrCatEntry->primaryFlag;
+        record[ATTRCAT_ROOT_BLOCK_INDEX].nVal = attrCatEntry->rootBlock;
+        record[ATTRCAT_OFFSET_INDEX].nVal = attrCatEntry->offset;
 }

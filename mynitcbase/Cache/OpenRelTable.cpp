@@ -18,21 +18,20 @@ OpenRelTable::OpenRelTable(){
 	Attribute relCatRecord[RELCAT_NO_ATTRS];
 	relCatBlock.getRecord(relCatRecord, RELCAT_SLOTNUM_FOR_RELCAT);
 	
-	struct RelCacheEntry relCacheEntry;
-	RelCacheTable::recordToRelCatEntry(relCatRecord, &relCacheEntry.relCatEntry);
-	relCacheEntry.recId.block = RELCAT_BLOCK;
-	relCacheEntry.recId.slot = RELCAT_SLOTNUM_FOR_RELCAT;
+	struct RelCacheEntry *relCacheEntry = (struct RelCacheEntry*)malloc(sizeof(RelCacheEntry));
+	RelCacheTable::recordToRelCatEntry(relCatRecord, &(relCacheEntry->relCatEntry));
+	relCacheEntry->recId.block = RELCAT_BLOCK;
+	relCacheEntry->recId.slot = RELCAT_SLOTNUM_FOR_RELCAT;
 
-	RelCacheTable::relCache[RELCAT_RELID] = (struct RelCacheEntry*)malloc(sizeof(RelCacheEntry));
-	*(RelCacheTable::relCache[RELCAT_RELID]) = relCacheEntry;
+	RelCacheTable::relCache[RELCAT_RELID] = relCacheEntry;
 
 	relCatBlock.getRecord(relCatRecord, RELCAT_SLOTNUM_FOR_ATTRCAT);
-	RelCacheTable::recordToRelCatEntry(relCatRecord, &relCacheEntry.relCatEntry);
-	relCacheEntry.recId.block = RELCAT_BLOCK;
-	relCacheEntry.recId.slot = RELCAT_SLOTNUM_FOR_ATTRCAT;
+	relCacheEntry = (struct RelCacheEntry*)malloc(sizeof(RelCacheEntry));
+	RelCacheTable::recordToRelCatEntry(relCatRecord, &(relCacheEntry->relCatEntry));
+	relCacheEntry->recId.block = RELCAT_BLOCK;
+	relCacheEntry->recId.slot = RELCAT_SLOTNUM_FOR_ATTRCAT;
 
-	RelCacheTable::relCache[ATTRCAT_RELID] = (struct RelCacheEntry*)malloc(sizeof(RelCacheEntry));
-	*(RelCacheTable::relCache[ATTRCAT_RELID]) = relCacheEntry;
+	RelCacheTable::relCache[ATTRCAT_RELID] = relCacheEntry;
 
 
 	// Loading RELCAT and ATTRCAT into attribute cache
@@ -118,7 +117,7 @@ OpenRelTable::~OpenRelTable(){
 
 int OpenRelTable::getRelId(char relName[ATTR_SIZE]){
 	for(int i=0; i<MAX_OPEN; i++){
-		if(!tableMetaInfo[i].free && strcmp(tableMetaInfo[i].relName, relName)==0)return i;
+		if(tableMetaInfo[i].free==false && strcmp(tableMetaInfo[i].relName, relName)==0)return i;
 	}
 	return E_RELNOTOPEN;
 }
@@ -142,12 +141,11 @@ int OpenRelTable::openRel(char relName[ATTR_SIZE]){
 	Attribute record[RELCAT_NO_ATTRS];
 	relCatBuffer.getRecord(record, relcatRecId.slot);
 	
-	RelCacheEntry relCacheEntry;
-	RelCacheTable::recordToRelCatEntry(record, &relCacheEntry.relCatEntry);
-	relCacheEntry.recId = relcatRecId;
+	RelCacheEntry *relCacheEntry = (struct RelCacheEntry*)malloc(sizeof(RelCacheEntry));
+	RelCacheTable::recordToRelCatEntry(record, &(relCacheEntry->relCatEntry));
+	relCacheEntry->recId = relcatRecId;
 
-	RelCacheTable::relCache[relId] = (struct RelCacheEntry*)malloc(sizeof(RelCacheEntry));
-	*(RelCacheTable::relCache[relId]) = relCacheEntry;
+	RelCacheTable::relCache[relId] = relCacheEntry;
 
 	AttrCacheEntry *listHead, *prev=nullptr;
 	RelCacheTable::resetSearchIndex(ATTRCAT_RELID);
@@ -162,7 +160,9 @@ int OpenRelTable::openRel(char relName[ATTR_SIZE]){
 		attrCatBuffer.getRecord(attrCatRecord, attrCatRecId.slot);
 
 		AttrCacheEntry *currEntry = (struct AttrCacheEntry*)malloc(sizeof(AttrCacheEntry));
-		AttrCacheTable::recordToAttrCatEntry(attrCatRecord, &currEntry->attrCatEntry);
+		AttrCacheTable::recordToAttrCatEntry(attrCatRecord, &(currEntry->attrCatEntry));
+		currEntry->dirty = false;
+		currEntry->recId = attrCatRecId;
 		currEntry->next = nullptr;
 		if(prev == nullptr){
 			listHead = currEntry;
@@ -203,6 +203,13 @@ int OpenRelTable::closeRel(int relId){
 
 	AttrCacheEntry *next, *curr = AttrCacheTable::attrCache[relId];
         while(curr!=nullptr){
+		if(curr->dirty){
+			Attribute attrCatRecord[ATTRCAT_NO_ATTRS];
+			AttrCacheTable::attrCatEntryToRecord(&(curr->attrCatEntry), attrCatRecord);
+			RecId recId = curr->recId;
+			RecBuffer attrCatBlock(recId.block);
+			attrCatBlock.setRecord(attrCatRecord, recId.slot);
+		}
                 next = curr->next;
                 free(curr);
                 curr = next;

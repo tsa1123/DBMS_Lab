@@ -89,7 +89,20 @@ int BlockAccess::insert(int relId, union Attribute *record){
 	head.numEntries ++;
 	recBuffer.setHeader(&head);
 	
-	return SUCCESS;
+	int flag = SUCCESS;
+	AttrCatEntry attrCatEntry;
+	for(int attrOffset=0; attrOffset<numAttrs; attrOffset++){
+		AttrCacheTable::getAttrCatEntry(relId, attrOffset, &attrCatEntry);
+		if(attrCatEntry.rootBlock!=-1){
+			int retVal = BPlusTree::bPlusInsert(relId, attrCatEntry.attrName, record[attrOffset], recId);
+
+			if(retVal == E_DISKFULL){
+				flag = E_INDEX_BLOCKS_RELEASED;
+			}
+		}
+	}
+
+	return flag;
 }
 
 RecId BlockAccess::linearSearch(int relId, char attrName[ATTR_SIZE], union Attribute attrVal, int op){
@@ -341,15 +354,20 @@ int BlockAccess::deleteRelation(char relName[ATTR_SIZE]){
 				RelCacheTable::setRelCatEntry(ATTRCAT_RELID, &relCatEntry);
 			}
 			attrCatBuffer.releaseBlock();
+			RecId nextSearchIndex = {head.rblock, 0};
+			RelCacheTable::setSearchIndex(ATTRCAT_RELID, &nextSearchIndex);
 		}
-
+		if(rootBlock != -1){
+			BPlusTree::bPlusDestroy(rootBlock);
+		}
+		if(numberOfAttributesDeleted == nAttrs)break;
 	}
 	
 	relCatBuffer.getHeader(&head);
 	head.numEntries--;
 	relCatBuffer.setHeader(&head);
 
-	unsigned char slotMap[DISK_BLOCKS];
+	unsigned char slotMap[head.numSlots];
 	relCatBuffer.getSlotMap(slotMap);
 	slotMap[recId.slot] = SLOT_UNOCCUPIED;
 	relCatBuffer.setSlotMap(slotMap);
